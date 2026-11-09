@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f43">
+<title>우리반 스마트팜</title>
+<style>
+:root{
+  --bg:#f3f6ef; --card:#ffffff; --ink:#1d2a1f; --muted:#66746a; --line:#dfe6da;
+  --green:#1f6f43; --green2:#2f9b5c; --leaf:#e5f3e8;
+  --temp:#e4572e; --hum:#2d7dd2; --soil:#8a5a2b; --light:#e8a317;
+  --on:#2f9b5c; --off:#b9c2b6; --warn:#d1495b;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111712; --card:#1a221c; --ink:#e7efe8; --muted:#97a69b; --line:#2b372e;
+    --green:#5fc68a; --green2:#4fb57a; --leaf:#203126; --off:#4a554c;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  -webkit-text-size-adjust:100%}
+header{background:var(--green);color:#fff;padding:14px 16px 12px;position:sticky;top:0;z-index:5;
+  box-shadow:0 2px 8px rgba(0,0,0,.15)}
+header .row{display:flex;align-items:center;gap:10px;max-width:1100px;margin:0 auto}
+header h1{font-size:19px;margin:0;flex:1;letter-spacing:-.3px}
+.conn{display:flex;align-items:center;gap:6px;font-size:13px;background:rgba(255,255,255,.15);
+  padding:5px 10px;border-radius:99px;cursor:pointer;border:0;color:#fff}
+.dot{width:9px;height:9px;border-radius:50%;background:#ffcc4d}
+.dot.ok{background:#7dff9e}.dot.bad{background:#ff7a7a}
+main{max-width:1100px;margin:0 auto;padding:14px 16px 90px}
+section{margin-bottom:18px}
+h2{font-size:16px;margin:4px 2px 10px;display:flex;align-items:center;gap:6px}
+h2 small{font-weight:400;color:var(--muted);font-size:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:820px){.grid4{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:1fr}}
+.sensor .label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sensor .val{font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:-1px}
+.sensor .val span{font-size:15px;font-weight:500;color:var(--muted);margin-left:2px}
+.sensor .sub{font-size:12px;color:var(--muted);min-height:16px}
+.bar{height:7px;background:var(--line);border-radius:9px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;border-radius:9px;transition:width .5s}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--leaf);color:var(--green);font-weight:600}
+.badge.warn{background:#fde4e7;color:var(--warn)}
+/* devices */
+.dev .top{display:flex;align-items:center;gap:10px}
+.dev .ico{font-size:26px;width:44px;height:44px;border-radius:12px;background:var(--leaf);
+  display:flex;align-items:center;justify-content:center}
+.dev .name{flex:1}
+.dev .name b{display:block;font-size:15px}
+.dev .name small{color:var(--muted);font-size:12px}
+.toggle{position:relative;width:62px;height:34px;border-radius:99px;background:var(--off);border:0;cursor:pointer;
+  transition:background .2s;flex-shrink:0}
+.toggle::after{content:"OFF";position:absolute;top:3px;left:3px;width:28px;height:28px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .2s;font-size:8px;line-height:28px;color:#888;font-weight:700}
+.toggle.on{background:var(--on)}.toggle.on::after{left:31px;content:"ON";color:var(--on)}
+.modes{display:flex;background:var(--bg);border-radius:10px;padding:3px;margin:12px 0 10px}
+.modes button{flex:1;border:0;background:transparent;padding:8px 4px;border-radius:8px;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit}
+.modes button.sel{background:var(--card);color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.th{font-size:13px;color:var(--muted)}
+.th .line{display:flex;align-items:center;gap:8px;margin-top:4px}
+.th input[type=range]{flex:1;accent-color:var(--green2)}
+.th output{min-width:46px;text-align:right;font-weight:700;color:var(--ink);font-size:15px}
+.rule{font-size:12px;background:var(--bg);border-radius:8px;padding:8px 10px;margin-top:10px;color:var(--muted);line-height:1.5}
+.ledopt{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.chip{border:2px solid transparent;width:28px;height:28px;border-radius:50%;cursor:pointer}
+.chip.sel{border-color:var(--ink)}
+/* chart */
+.chartbox{position:relative}
+canvas.chart{width:100%;height:260px;display:block}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-bottom:8px}
+.legend label{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+.legend input{accent-color:var(--green2)}
+.seg{display:flex;gap:6px;margin-left:auto}
+.seg button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:4px 10px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit}
+.seg button.sel{background:var(--green);color:#fff;border-color:var(--green)}
+.tip{position:absolute;pointer-events:none;background:rgba(20,30,22,.92);color:#fff;font-size:12px;padding:6px 9px;
+  border-radius:8px;display:none;white-space:nowrap;line-height:1.5}
+/* buttons */
+.btn{border:0;background:var(--green);color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn.ghost{background:var(--leaf);color:var(--green)}
+.btn.red{background:#fde4e7;color:var(--warn)}
+.btn:disabled{opacity:.5}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+textarea,input[type=text]{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px;
+  background:var(--bg);color:var(--ink);font-family:inherit}
+textarea{min-height:110px;resize:vertical;line-height:1.6}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+@media (max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--bg);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.stat b{display:block;font-size:14px;color:var(--ink);margin-top:2px}
+.records .item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.records .item:first-child{border-top:0}
+.records .item .t{flex:1}
+.records .item b{display:block;font-size:14px}
+.records .item small{color:var(--muted);font-size:12px}
+.empty{color:var(--muted);font-size:13px;text-align:center;padding:16px}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.modal.show{display:flex}
+.sheet{background:var(--card);width:100%;max-width:760px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px 26px}
+@media (min-width:760px){.modal{align-items:center}.sheet{border-radius:18px}}
+.sheet h3{margin:0 0 12px;font-size:17px;display:flex;align-items:center}
+.sheet h3 .x{margin-left:auto;border:0;background:var(--bg);color:var(--ink);width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+.help{font-size:12px;color:var(--muted);line-height:1.6}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1d2a1f;color:#fff;padding:10px 16px;
+  border-radius:10px;font-size:14px;opacity:0;transition:opacity .3s;z-index:30;pointer-events:none}
+.toast.show{opacity:1}
+.demo-banner{background:#fff4d6;color:#7a5a00;font-size:13px;padding:8px 12px;border-radius:10px;margin-bottom:12px;display:none}
+.demo-banner.show{display:block}
+#printArea{display:none}
+@media print{
+  header,main,.modal,.toast{display:none!important}
+  body{background:#fff;color:#000}
+  #printArea{display:block;padding:10mm;font-size:12pt;color:#000}
+  #printArea h1{font-size:18pt;margin:0 0 4px}
+  #printArea img{width:100%;border:1px solid #ccc;margin:8px 0}
+  #printArea table{border-collapse:collapse;width:100%;margin:8px 0}
+  #printArea td,#printArea th{border:1px solid #999;padding:4px 6px;font-size:10pt;text-align:center}
+  #printArea .diary{border:1px solid #999;padding:10px;min-height:60mm;white-space:pre-wrap;line-height:1.8}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>🌱 우리반 스마트팜</h1>
+    <button class="conn" id="connBtn"><span class="dot" id="connDot"></span><span id="connText">연결 중…</span></button>
+  </div>
+</header>
+
+<main>
+  <div class="demo-banner" id="demoBanner">🧪 <b>연습(데모) 모드</b> — 보드가 연결되지 않아 가짜 데이터로 움직이고 있어요. 오른쪽 위 연결 버튼에서 <b>원격(Firebase) 정보</b>나 ESP32 주소를 넣어 주세요.</div>
+
+  <!-- 센서 -->
+  <section>
+    <h2>📟 지금 우리 농장은? <small id="lastUpdate"></small></h2>
+    <div class="grid4">
+      <div class="card sensor">
+        <div class="label"><span class="sw" style="background:var(--temp)"></span>온도</div>
+        <div class="val" id="vT">--<span>°C</span></div>
+        <div class="sub" id="sT">&nbsp;</div>
+        <div class="bar"><i id="bT" style="background:var(--temp)"></i></div>
+      </div>
+      <div class="card sensor">
+        <div class="label"><span class="sw" style="background:var(--hum)"></span>공기 습도</div>
+        <div class="val" id="vH">--<span>%</span></div>
+        <div class="sub" id="sH">&nbsp;</div>
+        <div class="bar"><i id="bH" style="background:var(--hum)"></i></div>
+      </div>
+      <div class="card sensor">
+        <div class="label"><span class="sw" style="background:var(--soil)"></span>토양 수분</div>
+        <div class="val" id="vS">--<span>%</span></div>
+        <div class="sub" id="sS">&nbsp;</div>
+        <div class="bar"><i id="bS" style="background:var(--soil)"></i></div>
+      </div>
+      <div class="card sensor">
+        <div class="label"><span class="sw" style="background:var(--light)"></span>밝기(조도)</div>
+        <div class="val" id="vL">--<span>%</span></div>
+        <div class="sub" id="sL">&nbsp;</div>
+        <div class="bar"><i id="bL" style="background:var(--light)"></i></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 제어 -->
+  <section>
+    <h2>🕹️ 장치 제어 <small>자동: 기준값으로 스스로 작동 · 수동: 직접 켜고 끄기</small></h2>
+    <div class="grid3">
+      <!-- 팬 -->
+      <div class="card dev" id="dev-fan">
+        <div class="top">
+          <div class="ico">🌀</div>
+          <div class="name"><b>환기 팬</b><small>MOTOR A</small></div>
+          <button class="toggle" data-dev="fan" aria-label="팬 켜기/끄기"></button>
+        </div>
+        <div class="modes" data-dev="fan"><button data-m="auto">자동</button><button data-m="manual">수동</button></div>
+        <div class="th">공기 습도가 이 값보다 <b>높으면</b> 팬 작동
+          <div class="line"><input type="range" min="20" max="95" step="1" id="thHum"><output id="oHum">70%</output></div>
+        </div>
+        <div class="rule" id="rFan">-</div>
+      </div>
+      <!-- 펌프 -->
+      <div class="card dev" id="dev-pump">
+        <div class="top">
+          <div class="ico">💧</div>
+          <div class="name"><b>워터 펌프</b><small>MOTOR B</small></div>
+          <button class="toggle" data-dev="pump" aria-label="펌프 켜기/끄기"></button>
+        </div>
+        <div class="modes" data-dev="pump"><button data-m="auto">자동</button><button data-m="manual">수동</button></div>
+        <div class="th">토양 수분이 이 값보다 <b>낮으면</b> 물 주기
+          <div class="line"><input type="range" min="5" max="90" step="1" id="thSoil"><output id="oSoil">40%</output></div>
+        </div>
+        <div class="rule" id="rPump">-</div>
+      </div>
+      <!-- 네오픽셀 -->
+      <div class="card dev" id="dev-led">
+        <div class="top">
+          <div class="ico">💡</div>
+          <div class="name"><b>식물 조명 (네오픽셀)</b><small>GPIO26 · 보드 버튼으로도 켜고 꺼요</small></div>
+          <button class="toggle" data-dev="led" aria-label="조명 켜기/끄기"></button>
+        </div>
+        <div class="modes" data-dev="led"><button data-m="auto">자동</button><button data-m="manual">수동</button></div>
+        <div class="th">밝기가 이 값보다 <b>낮으면</b> 조명 켜기
+          <div class="line"><input type="range" min="0" max="90" step="1" id="thLight"><output id="oLight">30%</output></div>
+        </div>
+        <div class="ledopt">색
+          <span class="chip" data-c="ff00c8" style="background:#ff00c8" title="식물등(보라)"></span>
+          <span class="chip" data-c="ffffff" style="background:#fff;border-color:var(--line)" title="흰색"></span>
+          <span class="chip" data-c="ff2000" style="background:#ff2000" title="빨강"></span>
+          <span class="chip" data-c="0040ff" style="background:#0040ff" title="파랑"></span>
+          <span style="margin-left:6px">밝기</span><input type="range" min="10" max="255" id="ledBri" style="flex:1;min-width:80px;accent-color:var(--green2)">
+        </div>
+        <div class="rule" id="rLed">-</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 실시간 그래프 -->
+  <section>
+    <h2>📈 실시간 그래프 <small id="logCount"></small></h2>
+    <div class="card">
+      <div class="legend">
+        <label><input type="checkbox" data-s="t" checked><span class="sw" style="background:var(--temp)"></span>온도(°C, 오른쪽 눈금)</label>
+        <label><input type="checkbox" data-s="h" checked><span class="sw" style="background:var(--hum)"></span>공기 습도(%)</label>
+        <label><input type="checkbox" data-s="soil" checked><span class="sw" style="background:var(--soil)"></span>토양 수분(%)</label>
+        <label><input type="checkbox" data-s="light"><span class="sw" style="background:var(--light)"></span>밝기(%)</label>
+        <div class="seg" id="rangeSeg"><button data-r="60">1분</button><button data-r="600" class="sel">10분</button><button data-r="3600">1시간</button><button data-r="86400">24시간</button></div>
+      </div>
+      <div class="chartbox"><canvas class="chart" id="liveChart"></canvas><div class="tip" id="liveTip"></div></div>
+      <div class="btns" style="margin-top:12px">
+        <button class="btn" id="btnSave">📒 분석 기록 + 관찰일기 저장</button>
+        <button class="btn ghost" id="btnCsvLive">⬇️ 측정값 CSV</button>
+        <button class="btn red" id="btnClear">🗑️ 그래프 비우기</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 기록 -->
+  <section>
+    <h2>📚 관찰 기록장 <small id="recWhere">이 기기(브라우저)에 저장돼요</small></h2>
+    <div class="card records" id="records"></div>
+  </section>
+
+  <p class="help" style="text-align:center">기준값을 바꾸면 보드에 바로 저장돼요 · 자동 모드 펌프는 5초 물 주고 15초 쉬어요(흙에 물이 스며들 시간)<br>
+  ☁️ 원격 모드에서는 명령이 보드에 닿기까지 1~2초 걸려요 · 보드가 1분마다 기록을 남겨서 휴대폰을 꺼 둬도 24시간 그래프가 채워져요</p>
+</main>
+
+<!-- 연결 설정 -->
+<div class="modal" id="connModal"><div class="sheet">
+  <h3>🔌 보드 연결 <button class="x" data-close>×</button></h3>
+  <div class="modes" id="connTabs" style="margin-top:0"><button data-t="cloud" class="sel">☁️ 원격(Firebase)</button><button data-t="local">📶 직접 연결</button></div>
+
+  <div id="tabCloud">
+    <p class="help" style="margin-top:0">어디서든(학교 5GHz 와이파이, LTE·5G 데이터) 휴대폰으로 제어해요. 선생님이 만든 Firebase 정보를 넣어 주세요.</p>
+    <div class="field"><label>웹 API 키 (apiKey · 선택, 비워도 돼요)</label><input type="text" id="fbKey" placeholder="AIzaSy..." autocomplete="off"></div>
+    <div class="field"><label>데이터베이스 주소 (databaseURL)</label><input type="text" id="fbUrl" placeholder="https://프로젝트-default-rtdb.asia-southeast1.firebasedatabase.app" autocomplete="off"></div>
+    <div class="field"><label>우리 농장 이름 (FARM_ID · 스케치와 똑같이)</label><input type="text" id="fbFarm" placeholder="예: 2-3반-1모둠" autocomplete="off"></div>
+    <div class="btns" style="margin-bottom:14px">
+      <button class="btn" id="btnCloud">원격 연결</button>
+      <button class="btn ghost" id="btnShare">🔗 모둠 공유 링크 복사</button>
+    </div>
+  </div>
+
+  <div id="tabLocal" style="display:none">
+    <div class="field">
+      <label>ESP32 주소 (OLED 맨 아랫줄에 나와요)</label>
+      <input type="text" id="ipInput" placeholder="예: 192.168.0.23" inputmode="url">
+    </div>
+    <div class="btns" style="margin-bottom:14px">
+      <button class="btn" id="btnConnect">연결하기</button>
+    </div>
+    <div class="help">
+      휴대폰이 보드와 <b>같은 와이파이</b>(핫스팟)에 있거나, 보드가 만든 와이파이 <b>SmartFarm</b>(비밀번호 12345678)에 접속했을 때 쓰는 방법이에요. 인터넷 주소창에 <code>http://192.168.4.1</code> 처럼 보드 주소를 넣으면 이 화면이 바로 열려요.
+    </div>
+    <p class="help" id="httpsNote" style="color:var(--warn);display:none">⚠️ 지금 페이지가 https 주소로 열려 있어서 보드(http)에 직접 연결할 수 없어요. 원격(Firebase)을 쓰거나 보드 주소로 직접 접속해 주세요.</p>
+  </div>
+
+  <div class="btns" style="margin-top:6px"><button class="btn ghost" id="btnDemo">🧪 데모 모드로 연습</button></div>
+  <p class="help" style="margin-top:12px">💡 휴대폰 브라우저 메뉴의 <b>“홈 화면에 추가”</b>를 누르면 앱처럼 쓸 수 있어요.</p>
+</div></div>
+
+<!-- 기록 저장 / 보기 -->
+<div class="modal" id="recModal"><div class="sheet">
+  <h3 id="recHead">📒 분석 기록 <button class="x" data-close>×</button></h3>
+  <div class="field"><label>제목</label><input type="text" id="recTitle"></div>
+  <div class="chartbox"><canvas class="chart" id="recChart" style="height:220px"></canvas><div class="tip" id="recTip"></div></div>
+  <div class="stats" id="recStats"></div>
+  <div class="field"><label>🖊️ 관찰일기 — 오늘 식물은 어땠나요? 그래프에서 무엇을 발견했나요?</label>
+    <textarea id="recDiary" placeholder="예) 오후 2시쯤 토양 수분이 35%까지 떨어지자 펌프가 작동했고 5분 뒤 55%로 올라갔다. 잎이 어제보다 더 펴졌다."></textarea></div>
+  <div class="field"><label>관찰한 사람</label><input type="text" id="recWho" placeholder="이름 / 모둠"></div>
+  <div class="btns">
+    <button class="btn" id="recSave">💾 저장</button>
+    <button class="btn ghost" id="recPng">🖼️ 이미지로 저장</button>
+    <button class="btn ghost" id="recPrint">🖨️ 인쇄 / PDF</button>
+    <button class="btn ghost" id="recCsv">⬇️ CSV</button>
+    <button class="btn red" id="recDel">삭제</button>
+  </div>
+</div></div>
+
+<div id="printArea"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ 기본 설정 ============ */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+};
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
+const pad = n => String(n).padStart(2,'0');
+const fmtTime = ts => { const d=new Date(ts); return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); };
+const fmtDate = ts => { const d=new Date(ts); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); };
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ============================================================
+   ☁️ 선생님용 설정 — 여기에 Firebase 정보를 미리 넣어 두면
+   학생들은 아무것도 입력하지 않아도 바로 원격 연결돼요.
+   (모둠마다 농장 이름만 다르면 주소 끝에 ?farm=모둠이름 을 붙여 공유)
+   ============================================================ */
+const FIREBASE = {
+  apiKey: '',      // (선택) 넣으면 익명 로그인으로 보호, 비우면 DB 규칙을 공개로 열어야 해요
+  dbUrl:  'https://traffice-9d12f-default-rtdb.firebaseio.com',
+  farmId: ''       // 예: '2-3반-1모둠'  (아두이노 스케치의 FARM_ID와 똑같이)
+};
+
+/* ============ 상태 ============ */
+let mode = 'demo';        // 'demo' | 'local' | 'cloud'
+let base = null;          // 직접 연결 시 ESP32 주소 ('' = 같은 주소에서 열림)
+let state = null;         // 마지막으로 받은 보드 상태
+let fails = 0;
+const log = [];           // {ts,t,h,soil,light}
+const MAX_LOG = 8000;
+let range = 600;
+const show = {t:true,h:true,soil:true,light:false};
+let editingTh = 0;        // 슬라이더 조작 중엔 덮어쓰지 않기
+
+/* ============ 직접 연결(같은 와이파이) ============ */
+async function api(path){
+  if(mode==='demo') return demoApi(path);
+  const ctl = new AbortController(); const tm = setTimeout(()=>ctl.abort(), 3000);
+  try{
+    const r = await fetch((base||'') + path, {signal:ctl.signal, cache:'no-store'});
+    if(!r.ok) throw new Error(r.status);
+    return await r.json();
+  } finally { clearTimeout(tm); }
+}
+async function poll(){
+  if(mode==='cloud') return;
+  try{
+    const s = await api('/api/status');
+    fails = 0; setConn('ok', mode==='demo' ? '데모 모드' : '📶 직접 연결됨');
+    applyState(s);
+  }catch(e){
+    fails++;
+    if(fails >= 3) setConn('bad','연결 끊김');
+  }
+}
+function setConn(cls, txt){ $('#connDot').className='dot '+cls; $('#connText').textContent=txt; }
+async function control(q){
+  if(mode==='cloud'){
+    optimistic(q);
+    try{ await cloud.req('POST','/cmds',{q, ts:{'.sv':'timestamp'}}); }
+    catch(e){ toast('명령을 보내지 못했어요 😢 인터넷 연결을 확인하세요'); }
+    return;
+  }
+  try{ const s = await api('/api/set?'+q); applyState(s, true); }
+  catch(e){ toast('보드에 명령을 보내지 못했어요 😢'); }
+}
+// 원격 명령은 보드가 받기까지 1~2초 걸려서, 화면부터 먼저 바꿔 보여줘요
+function optimistic(q){
+  if(!state) return;
+  const p=new URLSearchParams(q), s=JSON.parse(JSON.stringify(state)), d=p.get('dev');
+  if(d && p.has('mode')) s.mode[d]=p.get('mode');
+  if(d && p.has('state')){ s.mode[d]='manual'; s[d]=p.get('state')==='1'; }
+  ['hum','soil','light'].forEach(k=>{ if(p.has(k)) s.th[k]=+p.get(k); });
+  if(p.has('color')) s.color=p.get('color');
+  applyState(s, true);
+}
+
+/* ============ ☁️ Firebase 원격 연결 (라이브러리 없이 REST + 실시간 스트림) ============ */
+const cloud = {
+  cfg:null, token:null, exp:0, refresh:null, es:null, data:null, lastSeen:0, timer:null,
+  async auth(force){
+    if(!this.cfg.apiKey) return null;                       // API 키 없이 쓰는 경우 (공개 규칙)
+    if(!force && this.token && Date.now() < this.exp-120000) return this.token;
+    const k=this.cfg.apiKey; let r, j;
+    if(this.refresh){
+      r = await fetch('https://securetoken.googleapis.com/v1/token?key='+k, {method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(this.refresh)});
+      if(r.ok){ j=await r.json(); return this.setTok(j.id_token, j.refresh_token, j.expires_in); }
+    }
+    r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='+k, {method:'POST',
+      headers:{'Content-Type':'application/json'}, body:'{"returnSecureToken":true}'});
+    j = await r.json();
+    if(!r.ok) throw new Error(j.error && j.error.message || 'auth');
+    return this.setTok(j.idToken, j.refreshToken, j.expiresIn);
+  },
+  setTok(t, rt, sec){ this.token=t; this.refresh=rt; this.exp=Date.now()+(+sec)*1000; store.set('sf_rt', rt); return t; },
+  url(p, extra=''){ return this.cfg.dbUrl.replace(/\/+$/,'')+'/farms/'+encodeURIComponent(this.cfg.farmId)+p+'.json'+(this.token?'?auth='+this.token+extra:(extra?'?'+extra.slice(1):'')); },
+  async req(method, p, body, extra){
+    await this.auth();
+    const r = await fetch(this.url(p, extra), {method, body: body===undefined ? undefined : JSON.stringify(body)});
+    if(r.status===401){ this.token=null; throw new Error('401'); }
+    if(!r.ok) throw new Error(r.status+' '+await r.text());
+    return r.json();
+  },
+  async start(cfg){
+    this.stop(); this.cfg=cfg; this.refresh=store.get('sf_rt',null); this.data=null;
+    setConn('','원격 연결 중…');
+    try{ await this.auth(); }
+    catch(e){ setConn('bad','원격 연결 실패'); explainCloudError(e); return false; }
+    // 지난 24시간 기록(1분 간격) 불러와 그래프 채우기
+    try{
+      const hist = await this.req('GET','/log',undefined,'&orderBy=%22$key%22&limitToLast=1440');
+      if(hist){
+        const pts = Object.values(hist).filter(v=>v && v.ts).map(v=>({ts:v.ts, t:v.t??null, h:v.h??null, soil:v.soil, light:v.light}));
+        log.length=0; log.push(...pts.sort((a,b)=>a.ts-b.ts)); drawLive();
+      }
+    }catch(e){ if(String(e.message).startsWith('401')||String(e.message).includes('Permission')) { explainCloudError(e); } }
+    this.open();
+    clearInterval(this.timer);
+    this.timer = setInterval(()=>this.watch(), 5000);
+    await loadRecords();
+    return true;
+  },
+  open(){
+    if(this.es) this.es.close();
+    this.es = new EventSource(this.url('/status'));
+    const onMsg = (e, isPatch) => {
+      const {path, data} = JSON.parse(e.data);
+      if(isPatch){ if(!this.data) this.data={}; Object.keys(data||{}).forEach(k=>setPath(this.data, path.replace(/\/$/,'')+'/'+k, data[k])); }
+      else if(path==='/') this.data = data;
+      else { if(!this.data) this.data={}; setPath(this.data, path, data); }
+      if(this.data && this.data.soil!==undefined && this.data.mode && this.data.th){ this.lastSeen=Date.now(); fails=0; applyState(this.data); this.watch(); }
+      else setConn('bad','보드 기다리는 중');
+    };
+    this.es.addEventListener('put', e=>onMsg(e,false));
+    this.es.addEventListener('patch', e=>onMsg(e,true));
+    this.es.addEventListener('auth_revoked', async ()=>{ await this.auth(true); this.open(); });
+    this.es.addEventListener('cancel', ()=>{ setConn('bad','권한 없음'); toast('⚠️ Firebase 규칙(rules)에서 읽기 권한을 확인해 주세요'); });
+  },
+  async watch(){
+    if(this.cfg.apiKey && Date.now() > this.exp-180000){ try{ await this.auth(true); this.open(); }catch(e){} }   // 토큰 갱신
+    const ts = this.data && this.data.ts;
+    if(!this.data) setConn('bad','보드 기다리는 중');
+    else if(ts && Date.now()-ts > 30000) setConn('bad','보드 꺼짐 · 마지막 '+fmtTime(ts));
+    else setConn('ok','☁️ 원격 연결됨');
+  },
+  stop(){ if(this.es) this.es.close(); this.es=null; clearInterval(this.timer); }
+};
+function setPath(obj, path, val){
+  const ks = path.split('/').filter(Boolean); if(!ks.length) return;
+  let o=obj; ks.slice(0,-1).forEach(k=>{ if(typeof o[k]!=='object'||o[k]===null) o[k]={}; o=o[k]; });
+  const last=ks[ks.length-1]; if(val===null||val===undefined) delete o[last]; else o[last]=val;
+}
+function explainCloudError(e){
+  const m=String(e.message||e);
+  if(m.includes('ADMIN_ONLY_OPERATION')||m.includes('OPERATION_NOT_ALLOWED')) toast('⚠️ Firebase에서 익명 로그인(Anonymous)을 켜 주세요');
+  else if(m.includes('API key')||m.includes('API_KEY')) toast('⚠️ apiKey가 맞는지 확인해 주세요');
+  else if(m.startsWith('401')||m.includes('Permission')) toast('⚠️ 데이터베이스 규칙(rules)을 확인해 주세요');
+  else toast('⚠️ 원격 연결 실패: '+m.slice(0,60));
+}
+
+/* ============ 화면 갱신 ============ */
+function soilWord(v){ return v<30?'🥵 말랐어요':v<60?'🙂 적당해요':'💦 촉촉해요'; }
+function humWord(v){ return v<40?'건조한 공기':v<70?'쾌적해요':'눅눅해요'; }
+function tempWord(v){ return v<15?'🥶 추워요':v<28?'😊 자라기 좋아요':'🥵 더워요'; }
+function lightWord(v){ return v<30?'🌙 어두워요':v<70?'⛅ 보통':'☀️ 밝아요'; }
+
+function applyState(s, fromControl){
+  state = s;
+  const tOk = s.t !== null && !isNaN(s.t);
+  $('#vT').firstChild.nodeValue = tOk ? s.t.toFixed(1) : '--';
+  $('#vH').firstChild.nodeValue = tOk ? Math.round(s.h) : '--';
+  $('#vS').firstChild.nodeValue = s.soil;
+  $('#vL').firstChild.nodeValue = s.light;
+  $('#sT').textContent = tOk ? tempWord(s.t) : '⚠️ 온습도 센서 확인';
+  $('#sH').textContent = tOk ? humWord(s.h) : '';
+  $('#sS').textContent = soilWord(s.soil)+' (원값 '+s.soilRaw+')';
+  $('#sL').textContent = lightWord(s.light)+' (원값 '+s.lightRaw+')';
+  $('#bT').style.width = tOk ? Math.min(100, s.t*2)+'%' : 0;
+  $('#bH').style.width = tOk ? s.h+'%' : 0;
+  $('#bS').style.width = s.soil+'%';
+  $('#bL').style.width = s.light+'%';
+  $('#lastUpdate').textContent = '· '+fmtTime(Date.now())+' 업데이트';
+
+  ['fan','pump','led'].forEach(d=>{
+    $(`.toggle[data-dev="${d}"]`).classList.toggle('on', !!s[d]);
+    $$(`.modes[data-dev="${d}"] button`).forEach(b=>b.classList.toggle('sel', b.dataset.m===s.mode[d]));
+  });
+  if(Date.now() - editingTh > 3000){
+    setSlider('thHum','oHum',s.th.hum); setSlider('thSoil','oSoil',s.th.soil); setSlider('thLight','oLight',s.th.light);
+    $('#ledBri').value = s.bri;
+  }
+  $$('.chip').forEach(c=>c.classList.toggle('sel', c.dataset.c===s.color));
+
+  const on = v => v ? '<b style="color:var(--on)">작동 중</b>' : '<b>멈춤</b>';
+  $('#rFan').innerHTML  = s.mode.fan==='auto'
+    ? `지금 습도 ${tOk?Math.round(s.h):'--'}% ${tOk&&s.h>=s.th.hum?'≥':'<'} 기준 ${s.th.hum}% → 팬 ${on(s.fan)}`
+    : `수동 모드 — 팬 ${on(s.fan)}`;
+  $('#rPump').innerHTML = s.mode.pump==='auto'
+    ? `지금 토양 수분 ${s.soil}% ${s.soil<s.th.soil?'<':'≥'} 기준 ${s.th.soil}% → 펌프 ${on(s.pump)}${s.pumpRest?' (물 스며드는 중… 쉬는 시간)':''}`
+    : `수동 모드 — 펌프 ${on(s.pump)}`;
+  $('#rLed').innerHTML  = s.mode.led==='auto'
+    ? `지금 밝기 ${s.light}% ${s.light<s.th.light?'<':'≥'} 기준 ${s.th.light}% → 조명 ${on(s.led)}`
+    : `수동 모드 — 조명 ${on(s.led)} (보드 버튼으로도 켜고 꺼요)`;
+
+  if(!fromControl){
+    log.push({ts:Date.now(), t:tOk?s.t:null, h:tOk?s.h:null, soil:s.soil, light:s.light});
+    if(log.length > MAX_LOG) log.shift();
+    $('#logCount').textContent = '· 측정 '+log.length+'개';
+    drawLive();
+  }
+}
+function setSlider(id,oid,v){ $('#'+id).value=v; $('#'+oid).textContent=v+'%'; }
+
+/* ============ 이벤트 ============ */
+$$('.toggle').forEach(b=>b.onclick=()=>{
+  if(!state) return;
+  const d=b.dataset.dev; control(`dev=${d}&state=${state[d]?0:1}`);
+});
+$$('.modes button').forEach(b=>b.onclick=()=>control(`dev=${b.parentNode.dataset.dev}&mode=${b.dataset.m}`));
+[['thHum','oHum','hum'],['thSoil','oSoil','soil'],['thLight','oLight','light']].forEach(([id,oid,k])=>{
+  const el=$('#'+id);
+  el.oninput=()=>{ editingTh=Date.now(); $('#'+oid).textContent=el.value+'%'; };
+  el.onchange=()=>{ editingTh=Date.now(); control(`${k}=${el.value}`); toast('기준값 저장: '+el.value+'%'); };
+});
+$('#ledBri').oninput=()=>editingTh=Date.now();
+$('#ledBri').onchange=()=>control('bri='+$('#ledBri').value);
+$$('.chip').forEach(c=>c.onclick=()=>control('color='+c.dataset.c));
+
+$$('#rangeSeg button').forEach(b=>b.onclick=()=>{
+  $$('#rangeSeg button').forEach(x=>x.classList.remove('sel')); b.classList.add('sel');
+  range=+b.dataset.r; drawLive();
+});
+$$('.legend input').forEach(i=>i.onchange=()=>{ show[i.dataset.s]=i.checked; drawLive(); });
+$('#btnClear').onclick=()=>{ if(confirm('실시간 그래프 데이터를 비울까요? (저장된 기록은 지워지지 않아요)')){ log.length=0; drawLive(); } };
+$('#btnCsvLive').onclick=()=>downloadCSV(log,'스마트팜_측정값_'+fmtDate(Date.now()).replace(/[: ]/g,'-'));
+
+/* ============ 그래프 그리기 (외부 라이브러리 없이) ============ */
+const SERIES = [
+  {k:'t',    name:'온도',     unit:'°C', color:'--temp',  right:true},
+  {k:'h',    name:'공기 습도', unit:'%',  color:'--hum'},
+  {k:'soil', name:'토양 수분', unit:'%',  color:'--soil'},
+  {k:'light',name:'밝기',     unit:'%',  color:'--light'},
+];
+function drawChart(cv, data, vis, opt={}){
+  const dpr = window.devicePixelRatio||1;
+  const W = opt.w || cv.clientWidth, H = opt.h || cv.clientHeight;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+  const ink = opt.print ? '#222' : css('--muted'), line = opt.print ? '#ddd' : css('--line');
+  if(opt.print){ g.fillStyle='#fff'; g.fillRect(0,0,W,H); }
+  else g.clearRect(0,0,W,H);
+  const L=34,R=36,T=10,B=24, pw=W-L-R, ph=H-T-B;
+  g.font='11px sans-serif'; g.lineWidth=1;
+  // 눈금
+  for(let i=0;i<=5;i++){
+    const y=T+ph*(1-i/5);
+    g.strokeStyle=line; g.beginPath(); g.moveTo(L,y); g.lineTo(L+pw,y); g.stroke();
+    g.fillStyle=ink; g.textAlign='right'; g.fillText(i*20+'%',L-5,y+4);
+    if(vis.t){ g.textAlign='left'; g.fillStyle=css('--temp')||'#e4572e'; g.fillText(i*10+'°',L+pw+5,y+4); }
+  }
+  cv._geo={L,T,pw,ph,data};
+  if(data.length<2){ g.fillStyle=ink; g.textAlign='center'; g.fillText('측정값을 모으는 중이에요…',L+pw/2,T+ph/2); return; }
+  const t0=data[0].ts, t1=data[data.length-1].ts, span=Math.max(1,t1-t0);
+  const X=ts=>L+pw*(ts-t0)/span;
+  // 시간축
+  g.fillStyle=ink; g.textAlign='center';
+  for(let i=0;i<=4;i++){ const ts=t0+span*i/4; g.fillText(fmtTime(ts).slice(0, span>3600e3?5:8), L+pw*i/4, H-6); }
+  SERIES.forEach(s=>{
+    if(!vis[s.k]) return;
+    const max = s.right ? 50 : 100;
+    g.strokeStyle = (opt.print ? {t:'#e4572e',h:'#2d7dd2',soil:'#8a5a2b',light:'#e8a317'}[s.k] : css(s.color));
+    g.lineWidth=2; g.lineJoin='round'; g.beginPath();
+    let pen=false, last=null;
+    const step=Math.max(1,Math.floor(data.length/pw));   // 화면 폭보다 많으면 솎아내기
+    for(let i=0;i<data.length;i+=step){
+      const d=data[i], v=d[s.k];
+      if(v===null||v===undefined){ pen=false; continue; }
+      const x=X(d.ts), y=T+ph*(1-Math.max(0,Math.min(max,v))/max);
+      pen ? g.lineTo(x,y) : g.moveTo(x,y); pen=true; last=[x,y];
+    }
+    g.stroke();
+    if(last){ g.fillStyle=g.strokeStyle; g.beginPath(); g.arc(last[0],last[1],3,0,7); g.fill(); }
+  });
+}
+function attachTip(cv, tip, getVis){
+  const move = e=>{
+    const geo=cv._geo; if(!geo||geo.data.length<2){ tip.style.display='none'; return; }
+    const r=cv.getBoundingClientRect(); const px=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+    const d=geo.data, t0=d[0].ts, span=d[d.length-1].ts-t0;
+    const ts=t0+span*Math.max(0,Math.min(1,(px-geo.L)/geo.pw));
+    let lo=0,hi=d.length-1; while(hi-lo>1){ const m=(lo+hi)>>1; d[m].ts<ts?lo=m:hi=m; }
+    const p=Math.abs(d[lo].ts-ts)<Math.abs(d[hi].ts-ts)?d[lo]:d[hi], vis=getVis();
+    let h='<b>'+fmtTime(p.ts)+'</b>';
+    SERIES.forEach(s=>{ if(vis[s.k]&&p[s.k]!=null) h+='<br>'+s.name+' '+(s.k==='t'?p[s.k].toFixed(1):Math.round(p[s.k]))+s.unit; });
+    tip.innerHTML=h; tip.style.display='block';
+    tip.style.left=Math.min(r.width-tip.offsetWidth-4, Math.max(0,px+10))+'px'; tip.style.top='10px';
+  };
+  cv.addEventListener('mousemove',move); cv.addEventListener('touchmove',move,{passive:true});
+  cv.addEventListener('mouseleave',()=>tip.style.display='none'); cv.addEventListener('touchend',()=>setTimeout(()=>tip.style.display='none',1500));
+}
+function liveData(){ if(!range) return log; const from=Date.now()-range*1000; return log.filter(d=>d.ts>=from); }
+function drawLive(){ drawChart($('#liveChart'), liveData(), show); }
+attachTip($('#liveChart'), $('#liveTip'), ()=>show);
+window.addEventListener('resize', ()=>{ drawLive(); if(curRec) drawChart($('#recChart'), curRec.data, allVis); });
+
+/* ============ 통계 / 파일 ============ */
+function statsOf(data){
+  const out={};
+  SERIES.forEach(s=>{
+    const v=data.map(d=>d[s.k]).filter(x=>x!==null&&x!==undefined);
+    out[s.k]= v.length ? {min:Math.min(...v), max:Math.max(...v), avg:v.reduce((a,b)=>a+b,0)/v.length} : null;
+  });
+  return out;
+}
+function statsHTML(st){
+  return SERIES.map(s=>{ const x=st[s.k]; if(!x) return `<div class="stat">${s.name}<b>-</b></div>`;
+    const f=v=>s.k==='t'?v.toFixed(1):Math.round(v);
+    return `<div class="stat"><span class="sw" style="background:var(${s.color})"></span> ${s.name}<b>평균 ${f(x.avg)}${s.unit}</b>최저 ${f(x.min)} · 최고 ${f(x.max)}</div>`; }).join('');
+}
+function downloadCSV(data, name){
+  if(!data.length){ toast('저장할 측정값이 없어요'); return; }
+  const rows=['시간,온도(°C),공기습도(%),토양수분(%),밝기(%)'];
+  data.forEach(d=>rows.push([fmtDate(d.ts)+':'+pad(new Date(d.ts).getSeconds()), d.t??'', d.h??'', d.soil, d.light].join(',')));
+  downloadBlob(new Blob(['﻿'+rows.join('\n')],{type:'text/csv'}), name+'.csv');
+}
+function downloadBlob(blob, name){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500);
+}
+function downsample(data, n){ if(data.length<=n) return data.slice(); const out=[], step=data.length/n; for(let i=0;i<n;i++) out.push(data[Math.floor(i*step)]); out.push(data[data.length-1]); return out; }
+
+/* ============ 관찰 기록 ============ */
+let records = store.get('sf_records', []);
+let curRec = null;
+// 원격 모드: 기록을 Firebase에 저장 → 휴대폰·PC·모둠원 모두 같은 기록장을 봐요
+async function loadRecords(){
+  if(mode==='cloud'){
+    $('#recWhere').textContent='☁️ 모둠 기록장 (모든 기기에서 함께 봐요)';
+    try{ const r=await cloud.req('GET','/records'); records = r ? Object.values(r).sort((a,b)=>a.id-b.id) : []; }
+    catch(e){ toast('기록장을 불러오지 못했어요'); }
+  } else {
+    $('#recWhere').textContent='이 기기(브라우저)에 저장돼요';
+    records = store.get('sf_records', []);
+  }
+  renderRecords();
+}
+async function persistRecord(r, del){
+  if(mode==='cloud'){
+    await cloud.req(del?'DELETE':'PUT', '/records/'+r.id, del?undefined:r);
+    return true;
+  }
+  return store.set('sf_records', records);
+}
+const allVis = {t:true,h:true,soil:true,light:true};
+attachTip($('#recChart'), $('#recTip'), ()=>allVis);
+
+function renderRecords(){
+  const box=$('#records');
+  if(!records.length){ box.innerHTML='<div class="empty">아직 저장한 기록이 없어요. 그래프 아래 <b>분석 기록 저장</b>을 눌러 첫 관찰일기를 써 보세요!</div>'; return; }
+  box.innerHTML = records.slice().reverse().map(r=>{
+    const s=r.stats.soil, h=r.stats.h;
+    return `<div class="item" data-id="${r.id}"><div style="font-size:24px">📗</div><div class="t"><b>${esc(r.title)}</b>
+      <small>${fmtDate(r.created)} · ${r.who?esc(r.who)+' · ':''}토양 평균 ${s?Math.round(s.avg):'-'}% · 습도 평균 ${h?Math.round(h.avg):'-'}%</small></div><span>›</span></div>`;
+  }).join('');
+  $$('#records .item').forEach(el=>el.onclick=()=>openRecord(records.find(r=>r.id==el.dataset.id)));
+}
+function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+$('#btnSave').onclick=()=>{
+  const data=liveData();
+  if(data.length<2){ toast('측정값이 2개 이상 모여야 저장할 수 있어요'); return; }
+  const d=new Date();
+  openRecord({id:null, created:Date.now(), title:`${d.getMonth()+1}월 ${d.getDate()}일 스마트팜 관찰`, who:store.get('sf_who',''),
+    diary:'', data:downsample(data,400), stats:statsOf(data)});
+};
+function openRecord(r){
+  curRec = JSON.parse(JSON.stringify(r));
+  $('#recHead').firstChild.nodeValue = r.id ? '📗 저장된 기록 ' : '📒 새 분석 기록 ';
+  $('#recTitle').value=r.title; $('#recDiary').value=r.diary; $('#recWho').value=r.who||'';
+  $('#recStats').innerHTML = `<div class="stat" style="grid-column:1/-1">측정 기간 <b>${fmtDate(r.data[0].ts)} ~ ${fmtTime(r.data[r.data.length-1].ts)}</b></div>` + statsHTML(r.stats);
+  $('#recDel').style.display = r.id ? '' : 'none';
+  openModal('#recModal');
+  requestAnimationFrame(()=>drawChart($('#recChart'), curRec.data, allVis));
+}
+function readForm(){ curRec.title=$('#recTitle').value.trim()||'제목 없음'; curRec.diary=$('#recDiary').value; curRec.who=$('#recWho').value.trim(); store.set('sf_who',curRec.who); }
+$('#recSave').onclick=async()=>{
+  readForm();
+  if(!curRec.id){ curRec.id=Date.now(); records.push(curRec); }
+  else records[records.findIndex(r=>r.id===curRec.id)]=curRec;
+  const rec=curRec; renderRecords(); closeModals();
+  try{
+    if(await persistRecord(rec)) toast(mode==='cloud'?'모둠 기록장에 저장했어요 ☁️📗':'기록장에 저장했어요 📗');
+    else toast('⚠️ 저장 공간이 부족해요. 오래된 기록을 지워 주세요');
+  }catch(e){ toast('⚠️ 저장하지 못했어요. 인터넷 연결을 확인하세요'); }
+};
+$('#recDel').onclick=async()=>{
+  if(!confirm('이 기록을 삭제할까요?')) return;
+  const rec=curRec;
+  records=records.filter(r=>r.id!==rec.id); renderRecords(); closeModals();
+  try{ await persistRecord(rec, true); toast('삭제했어요'); }catch(e){ toast('⚠️ 삭제하지 못했어요'); }
+};
+$('#recCsv').onclick=()=>{ readForm(); downloadCSV(curRec.data, curRec.title); };
+
+function chartImage(r, w=900, h=360){
+  const cv=document.createElement('canvas'); cv.style.width=w+'px'; cv.style.height=h+'px';
+  drawChart(cv, r.data, allVis, {w,h,print:true}); return cv;
+}
+function wrapText(g, text, maxW){
+  const lines=[]; String(text).split('\n').forEach(p=>{ let cur='';
+    for(const ch of p){ if(g.measureText(cur+ch).width>maxW){ lines.push(cur); cur=ch; } else cur+=ch; }
+    lines.push(cur); }); return lines;
+}
+$('#recPng').onclick=()=>{
+  readForm(); const r=curRec, W=1000, dpr=2;
+  const tmp=document.createElement('canvas').getContext('2d'); tmp.font='18px sans-serif';
+  const diary=wrapText(tmp, r.diary||'(관찰일기를 아직 쓰지 않았어요)', W-80);
+  const H=520+120+40+diary.length*30+60;
+  const cv=document.createElement('canvas'); cv.width=W*dpr; cv.height=H*dpr;
+  const g=cv.getContext('2d'); g.scale(dpr,dpr);
+  g.fillStyle='#fff'; g.fillRect(0,0,W,H);
+  g.fillStyle='#1f6f43'; g.fillRect(0,0,W,8);
+  g.fillStyle='#1d2a1f'; g.font='bold 28px sans-serif'; g.fillText('🌱 '+r.title,40,56);
+  g.fillStyle='#66746a'; g.font='16px sans-serif';
+  g.fillText(`${fmtDate(r.data[0].ts)} ~ ${fmtTime(r.data[r.data.length-1].ts)}   ${r.who?'관찰: '+r.who:''}`,40,86);
+  g.drawImage(chartImage(r,920,380),40,105,920,380);
+  let x=40; g.font='14px sans-serif';
+  [['온도','#e4572e'],['공기 습도','#2d7dd2'],['토양 수분','#8a5a2b'],['밝기','#e8a317']].forEach(([n,c])=>{ g.fillStyle=c; g.fillRect(x,498,14,14); g.fillStyle='#333'; g.fillText(n,x+20,510); x+=110; });
+  let y=560; g.font='16px sans-serif';
+  SERIES.forEach((s,i)=>{ const st=r.stats[s.k]; const f=v=>s.k==='t'?v.toFixed(1):Math.round(v);
+    const cx=40+i*230; g.fillStyle='#f3f6ef'; g.fillRect(cx,y-26,215,70);
+    g.fillStyle='#66746a'; g.fillText(s.name,cx+12,y-2);
+    g.fillStyle='#1d2a1f'; g.font='bold 18px sans-serif'; g.fillText(st?`평균 ${f(st.avg)}${s.unit}`:'-',cx+12,y+22); g.font='13px sans-serif';
+    g.fillStyle='#66746a'; if(st) g.fillText(`최저 ${f(st.min)} · 최고 ${f(st.max)}`,cx+12,y+38); g.font='16px sans-serif'; });
+  y+=90; g.fillStyle='#1f6f43'; g.font='bold 20px sans-serif'; g.fillText('🖊️ 관찰일기',40,y);
+  g.fillStyle='#1d2a1f'; g.font='18px sans-serif'; y+=36;
+  diary.forEach(l=>{ g.fillText(l,40,y); y+=30; });
+  cv.toBlob(b=>downloadBlob(b, r.title+'.png'));
+};
+$('#recPrint').onclick=()=>{
+  readForm(); const r=curRec;
+  const rows=SERIES.map(s=>{ const st=r.stats[s.k]; const f=v=>s.k==='t'?v.toFixed(1):Math.round(v);
+    return `<tr><td>${s.name}</td><td>${st?f(st.avg)+s.unit:'-'}</td><td>${st?f(st.min)+s.unit:'-'}</td><td>${st?f(st.max)+s.unit:'-'}</td></tr>`; }).join('');
+  const body = `<h1>🌱 ${esc(r.title)}</h1>
+    <div>${fmtDate(r.data[0].ts)} ~ ${fmtTime(r.data[r.data.length-1].ts)} ${r.who?' · 관찰: '+esc(r.who):''}</div>
+    <img src="${chartImage(r).toDataURL()}">
+    <div style="font-size:10pt">■ <span style="color:#e4572e">온도(°C, 오른쪽 눈금)</span> ■ <span style="color:#2d7dd2">공기 습도</span> ■ <span style="color:#8a5a2b">토양 수분</span> ■ <span style="color:#e8a317">밝기</span></div>
+    <table><tr><th>항목</th><th>평균</th><th>최저</th><th>최고</th></tr>${rows}</table>
+    <h3>🖊️ 관찰일기</h3><div class="diary">${esc(r.diary)}</div>`;
+
+  // 카카오톡·네이버 등 앱 안 브라우저는 인쇄를 지원하지 않아요
+  if(/KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(navigator.userAgent)){
+    toast('이 앱 안에서는 인쇄가 안 돼요. 오른쪽 위 ⋮ › "다른 브라우저로 열기"(크롬·사파리)를 눌러 주세요');
+    return;
+  }
+  // ① 인쇄용 새 창 열기 (가장 확실한 방법, 'PDF로 저장'도 여기서 가능)
+  const doc = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(r.title)}</title><style>
+body{font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;color:#000;background:#fff;margin:0;padding:16px;max-width:820px;margin:auto}
+h1{font-size:22px;margin:0 0 4px} img{width:100%;border:1px solid #ccc;margin:10px 0}
+table{border-collapse:collapse;width:100%;margin:10px 0} td,th{border:1px solid #999;padding:6px;text-align:center;font-size:14px}
+.diary{border:1px solid #999;padding:12px;min-height:180px;white-space:pre-wrap;line-height:1.8}
+.bar{position:sticky;top:0;background:#1f6f43;color:#fff;padding:10px 12px;border-radius:10px;margin-bottom:14px;display:flex;gap:8px;align-items:center;font-size:14px}
+.bar button{border:0;border-radius:8px;padding:9px 14px;font-size:15px;font-weight:700;background:#fff;color:#1f6f43}
+@media print{.bar{display:none} body{padding:0}}
+</style></head><body>
+<div class="bar"><span style="flex:1">인쇄 창에서 프린터 또는 <b>'PDF로 저장'</b>을 고르세요</span><button onclick="window.print()">🖨️ 인쇄하기</button></div>
+${body}<script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},400)}<\/script></body></html>`;
+  let w=null;
+  try{ w=window.open('', '_blank'); }catch(e){}
+  if(w){
+    w.document.open(); w.document.write(doc); w.document.close();
+    return;
+  }
+  // ② 새 창이 막혔으면 지금 화면에서 바로 인쇄
+  $('#printArea').innerHTML = body;
+  try{ window.print(); }
+  catch(e){ toast('이 화면에서는 인쇄가 막혀 있어요. "이미지로 저장" 후 인쇄해 주세요'); }
+};
+
+/* ============ 모달 ============ */
+function openModal(sel){ $(sel).classList.add('show'); }
+function closeModals(){ $$('.modal').forEach(m=>m.classList.remove('show')); curRec=null; }
+$$('[data-close]').forEach(b=>b.onclick=closeModals);
+$$('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) closeModals(); }));
+
+/* ============ 연결 ============ */
+function cloudCfg(){
+  const saved=store.get('sf_fb',{}), url=new URLSearchParams(location.search);
+  const c={ apiKey: url.get('key')||saved.apiKey||FIREBASE.apiKey,
+            dbUrl:  url.get('db') ||saved.dbUrl ||FIREBASE.dbUrl,
+            farmId: url.get('farm')||saved.farmId||FIREBASE.farmId };
+  return (c.dbUrl && c.farmId) ? c : null;
+}
+function showTab(t){
+  $$('#connTabs button').forEach(b=>b.classList.toggle('sel', b.dataset.t===t));
+  $('#tabCloud').style.display = t==='cloud'?'':'none';
+  $('#tabLocal').style.display = t==='local'?'':'none';
+}
+$$('#connTabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+$('#connBtn').onclick=()=>{
+  const c=cloudCfg()||FIREBASE;
+  $('#fbKey').value=c.apiKey||''; $('#fbUrl').value=c.dbUrl||''; $('#fbFarm').value=c.farmId||'';
+  $('#ipInput').value=store.get('sf_ip','');
+  showTab(mode==='local'?'local':'cloud'); openModal('#connModal');
+};
+function leaveMode(){ cloud.stop(); $('#demoBanner').classList.remove('show'); log.length=0; state=null; fails=0; drawLive(); }
+$('#btnConnect').onclick=async()=>{
+  let ip=$('#ipInput').value.trim().replace(/\/+$/,''); if(!ip){ toast('주소를 입력해 주세요'); return; }
+  if(!/^https?:\/\//.test(ip)) ip='http://'+ip;
+  store.set('sf_ip',ip); leaveMode(); base=ip; mode='local';
+  setConn('','연결 중…'); closeModals(); await loadRecords(); poll();
+};
+$('#btnCloud').onclick=async()=>{
+  const c={apiKey:$('#fbKey').value.trim(), dbUrl:$('#fbUrl').value.trim().replace(/\/+$/,''), farmId:$('#fbFarm').value.trim()};
+  if(!c.dbUrl||!c.farmId){ toast('데이터베이스 주소와 농장 이름을 채워 주세요'); return; }
+  if(!/^https:\/\//.test(c.dbUrl)){ toast('데이터베이스 주소는 https:// 로 시작해요'); return; }
+  if(/[.#$\[\]\/]/.test(c.farmId)){ toast('농장 이름에 . # $ [ ] / 는 쓸 수 없어요'); return; }
+  store.set('sf_fb',c); closeModals(); startCloud(c);
+};
+$('#btnShare').onclick=()=>{
+  const c={apiKey:$('#fbKey').value.trim(), dbUrl:$('#fbUrl').value.trim(), farmId:$('#fbFarm').value.trim()};
+  if(!c.dbUrl||!c.farmId){ toast('데이터베이스 주소와 농장 이름을 먼저 채워 주세요'); return; }
+  if(location.protocol==='file:'){ toast('웹에 올린 주소에서만 공유 링크를 만들 수 있어요'); return; }
+  const link=location.origin+location.pathname+'?'+(c.apiKey?'key='+encodeURIComponent(c.apiKey)+'&':'')+'db='+encodeURIComponent(c.dbUrl)+'&farm='+encodeURIComponent(c.farmId);
+  (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(()=>toast('링크를 복사했어요. 모둠 단톡방에 붙여 넣으세요!'), ()=>prompt('이 링크를 복사하세요', link));
+};
+$('#btnDemo').onclick=()=>{ startDemo(); closeModals(); };
+async function startDemo(){ leaveMode(); mode='demo'; $('#demoBanner').classList.add('show'); await loadRecords(); poll(); }
+async function startCloud(c){ leaveMode(); mode='cloud'; await cloud.start(c); }
+
+/* ============ 데모(연습) 모드: 보드 없이 화면 체험 ============ */
+const D = {t:24, h:62, soilRaw:2600, lightRaw:2400, fan:false, pump:false, led:false,
+  mode:{fan:'auto',pump:'auto',led:'auto'}, th:{hum:70,soil:40,light:30}, color:'ff00c8', bri:150, pumpOnAt:0, pumpRestUntil:0};
+function demoTick(){
+  const tm=Date.now()/1000;
+  D.t = 24 + 3*Math.sin(tm/90) + (Math.random()-.5)*.3;
+  D.h += (Math.random()-.45)*1.2 - (D.fan?1.1:0); D.h=Math.max(30,Math.min(95,D.h));
+  D.soilRaw += 6 + (D.pump?-160:0); D.soilRaw=Math.max(1300,Math.min(3400,D.soilRaw));
+  D.lightRaw = 2000 + 1700*Math.sin(tm/60) + (Math.random()-.5)*60;
+  const soil = Math.round(Math.max(0,Math.min(100,(3400-D.soilRaw)/(3400-1300)*100)));
+  const light = Math.round(Math.max(0,Math.min(100,D.lightRaw/4095*100)));
+  const now=Date.now();
+  if(D.mode.fan==='auto') D.fan = D.h>=D.th.hum ? true : (D.h<D.th.hum-2 ? false : D.fan);
+  if(D.mode.led==='auto') D.led = light<D.th.light ? true : (light>D.th.light+5 ? false : D.led);
+  if(D.mode.pump==='auto'){
+    if(D.pump && now-D.pumpOnAt>5000){ D.pump=false; D.pumpRestUntil=now+15000; }
+    else if(!D.pump && soil<D.th.soil && now>D.pumpRestUntil){ D.pump=true; D.pumpOnAt=now; }
+  }
+  return soil;
+}
+function demoApi(path){
+  const q=new URLSearchParams(path.split('?')[1]||'');
+  if(path.startsWith('/api/set')){
+    const dev=q.get('dev');
+    if(dev && q.has('mode')) D.mode[dev]=q.get('mode');
+    if(dev && q.has('state')){ D.mode[dev]='manual'; D[dev]=q.get('state')==='1'; if(dev==='pump'&&D.pump) D.pumpOnAt=Date.now(); }
+    ['hum','soil','light'].forEach(k=>{ if(q.has(k)) D.th[k]=+q.get(k); });
+    if(q.has('color')) D.color=q.get('color'); if(q.has('bri')) D.bri=+q.get('bri');
+  }
+  const soil=demoTick();
+  return Promise.resolve({t:+D.t.toFixed(1), h:Math.round(D.h), soil, soilRaw:Math.round(D.soilRaw),
+    light:Math.round(Math.max(0,Math.min(100,D.lightRaw/4095*100))), lightRaw:Math.round(D.lightRaw),
+    fan:D.fan, pump:D.pump, led:D.led, mode:{...D.mode}, th:{...D.th}, color:D.color, bri:D.bri,
+    pumpRest:!D.pump && Date.now()<D.pumpRestUntil});
+}
+
+/* ============ 시작 ============ */
+(async function init(){
+  const p=location.protocol;
+  if(p==='https:') $('#httpsNote').style.display='block';
+  setInterval(poll, 1000);
+  if(p==='http:'){                       // ESP32가 직접 보내준 페이지 → 직접 연결
+    mode='local'; base='';
+    try{ await api('/api/status'); await loadRecords(); return poll(); }catch(e){ base=null; mode='demo'; }
+  }
+  const c=cloudCfg();                    // Firebase 정보가 있으면 원격 연결
+  if(c){
+    if(new URLSearchParams(location.search).has('farm')) store.set('sf_fb',c);
+    return startCloud(c);
+  }
+  const saved=store.get('sf_ip','');
+  if(saved && p!=='https:'){
+    mode='local'; base=saved;
+    try{ await api('/api/status'); await loadRecords(); return poll(); }catch(e){ base=null; }
+  }
+  startDemo();
+})();
+</script>
+</body>
+</html>
