@@ -436,8 +436,14 @@ const cloud = {
   },
   open(){
     if(this.es) this.es.close();
-    this.es = new EventSource(this.url('/status'));
+    clearTimeout(this.retry);
+    this.lastEvt = Date.now();
+    const es = this.es = new EventSource(this.url('/status'));
+    // 화면을 나갔다 오거나(인쇄 창, 다른 앱) 인터넷이 잠깐 끊기면 브라우저가 연결을 닫아요 → 2초 뒤 다시 연결
+    es.onerror = () => { if(this.es===es && es.readyState===2){ clearTimeout(this.retry); this.retry=setTimeout(()=>this.reconnect(),2000); } };
+    es.addEventListener('keep-alive', ()=>{ this.lastEvt = Date.now(); });
     const onMsg = (e, isPatch) => {
+      this.lastEvt = Date.now();
       const {path, data} = JSON.parse(e.data);
       if(isPatch){ if(!this.data) this.data={}; Object.keys(data||{}).forEach(k=>setPath(this.data, path.replace(/\/$/,'')+'/'+k, data[k])); }
       else if(path==='/') this.data = data;
@@ -450,15 +456,31 @@ const cloud = {
     this.es.addEventListener('auth_revoked', async ()=>{ await this.auth(true); this.open(); });
     this.es.addEventListener('cancel', ()=>{ setConn('bad','권한 없음'); toast('⚠️ Firebase 규칙(rules)에서 읽기 권한을 확인해 주세요'); });
   },
+  // 끊긴 연결 되살리기 (출입증도 필요하면 새로 받아요)
+  async reconnect(){
+    if(mode!=='cloud' || !this.cfg || this.busy) return;
+    this.busy = true;
+    try{ await this.auth(); this.open(); }
+    catch(e){ setConn('bad','다시 연결 중…'); clearTimeout(this.retry); this.retry=setTimeout(()=>this.reconnect(),5000); }
+    finally{ this.busy = false; }
+  },
   async watch(){
     if(this.cfg.apiKey && Date.now() > this.exp-180000){ try{ await this.auth(true); this.open(); }catch(e){} }   // 토큰 갱신
+    // 연결이 닫혔거나, 20초 넘게 아무 소식이 없으면(보드는 5초마다 보내요) 다시 연결
+    if(!this.es || this.es.readyState===2 || Date.now()-(this.lastEvt||0) > 20000){ this.reconnect(); return; }
     const ts = this.data && this.data.ts;
     if(!this.data) setConn('bad','보드 기다리는 중');
     else if(ts && Date.now()-ts > 30000) setConn('bad','보드 꺼짐 · 마지막 '+fmtTime(ts));
     else setConn('ok','☁️ 원격 연결됨');
   },
-  stop(){ if(this.es) this.es.close(); this.es=null; clearInterval(this.timer); }
+  stop(){ if(this.es) this.es.close(); this.es=null; clearInterval(this.timer); clearTimeout(this.retry); }
 };
+// 인쇄 창·다른 앱에서 돌아오거나 인터넷이 다시 연결되면 바로 원격 연결 확인
+function resumeCloud(){ if(mode==='cloud' && document.visibilityState!=='hidden') cloud.watch(); }
+document.addEventListener('visibilitychange', resumeCloud);
+window.addEventListener('focus', resumeCloud);
+window.addEventListener('pageshow', resumeCloud);
+window.addEventListener('online', ()=>{ if(mode==='cloud') cloud.reconnect(); });
 function setPath(obj, path, val){
   const ks = path.split('/').filter(Boolean); if(!ks.length) return;
   let o=obj; ks.slice(0,-1).forEach(k=>{ if(typeof o[k]!=='object'||o[k]===null) o[k]={}; o=o[k]; });
