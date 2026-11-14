@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1f6f43">
-<title>우리반 스마트팜</title>
+<title>창신중 스마트팜</title>
 <style>
 :root{
   --bg:#f3f6ef; --card:#ffffff; --ink:#1d2a1f; --muted:#66746a; --line:#dfe6da;
@@ -131,7 +131,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.6}
 <body>
 <header>
   <div class="row">
-    <h1>🌱 우리반 스마트팜</h1>
+    <h1>🌱 창신중 스마트팜</h1>
     <button class="conn" id="connBtn"><span class="dot" id="connDot"></span><span id="connText">연결 중…</span></button>
   </div>
 </header>
@@ -278,7 +278,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.6}
       <button class="btn" id="btnConnect">연결하기</button>
     </div>
     <div class="help">
-      휴대폰이 보드와 <b>같은 와이파이</b>(핫스팟)에 있거나, 보드가 만든 와이파이 <b>SmartFarm</b>(비밀번호 12345678)에 접속했을 때 쓰는 방법이에요. 인터넷 주소창에 <code>http://192.168.4.1</code> 처럼 보드 주소를 넣으면 이 화면이 바로 열려요.
+      휴대폰이 보드와 <b>같은 와이파이</b>(핫스팟)에 있거나, 보드가 만든 와이파이 <b>Changsin-SmartFarm</b>(비밀번호 12345678)에 접속했을 때 쓰는 방법이에요. 인터넷 주소창에 <code>http://192.168.4.1</code> 처럼 보드 주소를 넣으면 이 화면이 바로 열려요.
     </div>
     <p class="help" id="httpsNote" style="color:var(--warn);display:none">⚠️ 지금 페이지가 https 주소로 열려 있어서 보드(http)에 직접 연결할 수 없어요. 원격(Firebase)을 쓰거나 보드 주소로 직접 접속해 주세요.</p>
   </div>
@@ -546,7 +546,7 @@ $$('#rangeSeg button').forEach(b=>b.onclick=()=>{
 });
 $$('.legend input').forEach(i=>i.onchange=()=>{ show[i.dataset.s]=i.checked; drawLive(); });
 $('#btnClear').onclick=()=>{ if(confirm('실시간 그래프 데이터를 비울까요? (저장된 기록은 지워지지 않아요)')){ log.length=0; drawLive(); } };
-$('#btnCsvLive').onclick=()=>downloadCSV(log,'스마트팜_측정값_'+fmtDate(Date.now()).replace(/[: ]/g,'-'));
+$('#btnCsvLive').onclick=()=>downloadCSV(log,'창신중스마트팜_측정값_'+fmtDate(Date.now()).replace(/[: ]/g,'-'));
 
 /* ============ 그래프 그리기 (외부 라이브러리 없이) ============ */
 const SERIES = [
@@ -684,7 +684,7 @@ $('#btnSave').onclick=()=>{
   const data=liveData();
   if(data.length<2){ toast('측정값이 2개 이상 모여야 저장할 수 있어요'); return; }
   const d=new Date();
-  openRecord({id:null, created:Date.now(), title:`${d.getMonth()+1}월 ${d.getDate()}일 스마트팜 관찰`, who:store.get('sf_who',''),
+  openRecord({id:null, created:Date.now(), title:`${d.getMonth()+1}월 ${d.getDate()}일 창신중 스마트팜 관찰`, who:store.get('sf_who',''),
     diary:'', data:downsample(data,400), stats:statsOf(data)});
 };
 function openRecord(r){
